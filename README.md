@@ -118,6 +118,7 @@ opus-4.8测3轮，cost RMB11.3
 <img width="2437" height="1121" alt="ad61705de79e42fd1d6c36c74db03b8f" src="https://github.com/user-attachments/assets/485e214b-f38f-46b7-93bf-9c57e765ce0d" />
 <img width="2518" height="1145" alt="5d8b91aba99d0462a4461a9b2cdbdcb4" src="https://github.com/user-attachments/assets/0bb5b5d1-0b92-4ea9-83bc-3cf85a0c870b" />
 <img width="1268" height="495" alt="image" src="https://github.com/user-attachments/assets/b9444cc0-c92b-4a18-8393-920b1edac246" />
+<img width="2290" height="927" alt="4491273d0192a4eba9e1d79801f2613c" src="https://github.com/user-attachments/assets/20b94a67-1069-4336-8037-f580a4b56292" />
 
 
 
