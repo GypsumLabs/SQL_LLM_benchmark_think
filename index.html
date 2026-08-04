@@ -5,6 +5,7 @@
 <!-- 2026-07-14: Match the inspector question/round label font size to the current model label. -->
 <!-- 2026-07-14: Update the visible application version to V1.2（202607141723）. -->
 <!-- 2026-07-15T18:18:59+08:00: Rename the prefix-cache checkbox label to describe per-question cache isolation. -->
+<!-- 2026-08-04T18:35:00+08:00: Change model select dropdown to datalist combobox supporting custom model name input and dropdown selection. -->
 <!-- 2026-07-14T20:48:23+08:00: Align model prompts, result feedback, DuckDB query isolation, timeout lifecycle, and numeric defaults with the upstream benchmark. -->
 <!-- 2026-07-14T21:17:42+08:00: Clear stale Running progress text after a benchmark is manually stopped. -->
 
@@ -18,7 +19,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>LLM SQL Local Benchmark V1.2 (GitHub-JSZip)</title>
+    <title>LLM SQL Local Benchmark V1.2.1 (GitHub-JSZip)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1573,7 +1574,7 @@
 
         <div class="header-title">
 
-            <h1>LLM SQL Local Benchmark <span class="version-tag">V1.2 (GitHub-JSZip)</span></h1>
+            <h1>LLM SQL Local Benchmark <span class="version-tag">V1.2.1 (GitHub-JSZip)</span></h1>
 
             <p>1:1 本地独立测试模块 · AdventureWorks 数据集</p>
 
@@ -1661,15 +1662,17 @@
 
                 <label>模型名称 (Model)</label>
 
-                <select id="api-model">
+                <input type="text" id="api-model" list="model-options" placeholder="选择或输入模型名称...">
 
-                    <option value="DeepSeek-V4-Flash">DeepSeek-V4-Flash</option>
+                <datalist id="model-options">
 
-                    <option value="deepseek-chat">deepseek-chat</option>
+                    <option value="DeepSeek-V4-Flash"></option>
 
-                    <option value="deepseek-coder">deepseek-coder</option>
+                    <option value="deepseek-chat"></option>
 
-                </select>
+                    <option value="deepseek-coder"></option>
+
+                </datalist>
 
             </div>
 
@@ -5006,23 +5009,27 @@ function renderRoundMatrix() {
 
 
 
-                // Populate select dropdown
+                // Populate datalist dropdown
 
                 const currentValue = select.value;
 
-                select.innerHTML = '';
+                const datalist = document.getElementById('model-options');
 
-                modelIds.forEach(id => {
+                if (datalist) {
 
-                    const opt = document.createElement('option');
+                    datalist.innerHTML = '';
 
-                    opt.value = id;
+                    modelIds.forEach(id => {
 
-                    opt.innerText = id;
+                        const opt = document.createElement('option');
 
-                    select.appendChild(opt);
+                        opt.value = id;
 
-                });
+                        datalist.appendChild(opt);
+
+                    });
+
+                }
 
 
 
@@ -7212,36 +7219,6 @@ function renderRoundMatrix() {
                     const selectEl = document.getElementById('api-model');
 
                     if (selectEl) {
-
-                        // Check if the option already exists in the select
-
-                        let optionExists = false;
-
-                        for (let i = 0; i < selectEl.options.length; i++) {
-
-                            if (selectEl.options[i].value === configs.model) {
-
-                                optionExists = true;
-
-                                break;
-
-                            }
-
-                        }
-
-                        if (!optionExists) {
-
-                            // Dynamically append the saved model as option
-
-                            const opt = document.createElement('option');
-
-                            opt.value = configs.model;
-
-                            opt.textContent = configs.model;
-
-                            selectEl.appendChild(opt);
-
-                        }
 
                         selectEl.value = configs.model;
 
