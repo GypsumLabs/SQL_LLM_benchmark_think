@@ -9,6 +9,7 @@
 <!-- 2026-07-15T18:18:59+08:00: Rename the prefix-cache checkbox label to describe per-question cache isolation. -->
 <!-- 2026-08-04T18:35:00+08:00: Change model select dropdown to datalist combobox supporting custom model name input and dropdown selection. -->
 <!-- 2026-08-04T18:45:00+08:00: Host DuckDB-Wasm and Worker files locally to prevent CDN network timeouts and support offline/LAN environments. -->
+<!-- 2026-08-04T18:55:00+08:00: Add focus/blur listeners to api-model input to temporarily clear value on focus to show all datalist options, and restore on cancel. -->
 
 <!DOCTYPE html>
 
@@ -20,7 +21,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>LLM SQL Local Benchmark V1.2.2（202608041845）</title>
+    <title>LLM SQL Local Benchmark V1.2.3（202608041855）</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
 
@@ -1574,7 +1575,7 @@
 
         <div class="header-title">
 
-            <h1>LLM SQL Local Benchmark <span class="version-tag">V1.2.2（202608041845）</span></h1>
+            <h1>LLM SQL Local Benchmark <span class="version-tag">V1.2.3（202608041855）</span></h1>
 
             <p>1:1 本地独立测试模块 · AdventureWorks 数据集</p>
 
@@ -7003,6 +7004,38 @@ function renderRoundMatrix() {
                 modelSelect.addEventListener('change', () => {
 
                     modelDisplay.textContent = modelSelect.value || '-';
+
+                });
+
+
+
+                // Focus: temporarily clear value so that the browser's datalist dropdown displays all available models
+
+                modelSelect.addEventListener('focus', function() {
+
+                    this.setAttribute('data-original-value', this.value);
+
+                    this.value = '';
+
+                });
+
+
+
+                // Blur: if the user clicks away or presses Escape without choosing a new model, restore the original value
+
+                modelSelect.addEventListener('blur', function() {
+
+                    setTimeout(() => {
+
+                        if (this.value === '') {
+
+                            this.value = this.getAttribute('data-original-value') || '';
+
+                            modelDisplay.textContent = this.value || '-';
+
+                        }
+
+                    }, 150);
 
                 });
 
