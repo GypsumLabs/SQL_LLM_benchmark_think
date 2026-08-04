@@ -8,6 +8,7 @@
 <!-- 2026-08-04T18:35:00+08:00: Change model select dropdown to datalist combobox supporting custom model name input and dropdown selection. -->
 <!-- 2026-08-04T18:45:00+08:00: Host DuckDB-Wasm and Worker files locally to prevent CDN network timeouts and support offline/LAN environments. -->
 <!-- 2026-08-04T18:55:00+08:00: Add focus/blur listeners to api-model input to temporarily clear value on focus to show all datalist options, and restore on cancel. -->
+<!-- 2026-08-04T20:05:00+08:00: Expand Max Tokens limit to 64k (65536) and save Max Tokens, Temperature, and Timeout to localStorage. -->
 <!-- 2026-07-14T20:48:23+08:00: Align model prompts, result feedback, DuckDB query isolation, timeout lifecycle, and numeric defaults with the upstream benchmark. -->
 <!-- 2026-07-14T21:17:42+08:00: Clear stale Running progress text after a benchmark is manually stopped. -->
 
@@ -21,7 +22,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>LLM SQL Local Benchmark V1.2.3 (GitHub-JSZip)</title>
+    <title>LLM SQL Local Benchmark V1.2.4 (GitHub-JSZip)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1576,7 +1577,7 @@
 
         <div class="header-title">
 
-            <h1>LLM SQL Local Benchmark <span class="version-tag">V1.2.3 (GitHub-JSZip)</span></h1>
+            <h1>LLM SQL Local Benchmark <span class="version-tag">V1.2.4 (GitHub-JSZip)</span></h1>
 
             <p>1:1 本地独立测试模块 · AdventureWorks 数据集</p>
 
@@ -1696,7 +1697,7 @@
 
                 <label>Max Tokens (生成长度)</label>
 
-                <input type="number" id="api-maxtokens" value="2048" min="256" max="8192">
+                <input type="number" id="api-maxtokens" value="2048" min="256" max="65536">
 
             </div>
 
@@ -5145,7 +5146,7 @@ function renderRoundMatrix() {
 
             const model = document.getElementById('api-model').value.trim();
 
-            const maxTokens = readNumericConfig('api-maxtokens', 2048, { integer: true, min: 256, max: 8192 });
+            const maxTokens = readNumericConfig('api-maxtokens', 2048, { integer: true, min: 256, max: 65536 });
 
             const temperature = readNumericConfig('api-temperature', 0.1, { min: 0, max: 2 });
 
@@ -5191,7 +5192,13 @@ function renderRoundMatrix() {
 
                 totalRounds,
 
-                cacheSaltEachQuestion
+                cacheSaltEachQuestion,
+
+                maxTokens,
+
+                temperature,
+
+                timeoutSec
 
             );
 
@@ -7164,7 +7171,7 @@ function renderRoundMatrix() {
 
 
 
-        function saveConfigsToLocalStorage(endpoint, apiKey, model, rounds, cacheSaltEachQuestion) {
+        function saveConfigsToLocalStorage(endpoint, apiKey, model, rounds, cacheSaltEachQuestion, maxTokens, temperature, timeoutSec) {
 
             const configs = {
 
@@ -7176,7 +7183,13 @@ function renderRoundMatrix() {
 
                 rounds: rounds,
 
-                cacheSaltEachQuestion: cacheSaltEachQuestion
+                cacheSaltEachQuestion: cacheSaltEachQuestion,
+
+                maxTokens: maxTokens,
+
+                temperature: temperature,
+
+                timeoutSec: timeoutSec
 
             };
 
@@ -7233,6 +7246,24 @@ function renderRoundMatrix() {
                 if (configs.cacheSaltEachQuestion !== undefined) {
 
                     document.getElementById('cache-salt-each-question').checked = Boolean(configs.cacheSaltEachQuestion);
+
+                }
+
+                if (configs.maxTokens !== undefined) {
+
+                    document.getElementById('api-maxtokens').value = configs.maxTokens;
+
+                }
+
+                if (configs.temperature !== undefined) {
+
+                    document.getElementById('api-temperature').value = configs.temperature;
+
+                }
+
+                if (configs.timeoutSec !== undefined) {
+
+                    document.getElementById('api-timeout').value = configs.timeoutSec;
 
                 }
 
