@@ -13,6 +13,48 @@
 
 ---
 
+## 🌟 本 Fork 说明：SQL_LLM_benchmark_think
+
+本仓库是对 [wangxian001/SQL_LLM_benchmark](https://github.com/wangxian001/SQL_LLM_benchmark)（V1.2.4）的二次开发分支，主要目的是**让这块评测面板能显式控制被测大模型的"思考强度"，并兼容不同模型各不相同的思考接口命名**。
+
+### 🎯 本 Fork 的目的
+原版评测在向模型发起请求时**不发送任何思考参数**，模型实际"想不想、想多深"完全由被请求端（部署侧）的默认配置决定。这带来的问题是：
+- 不同模型/不同部署下，思考开或关会导致结果不一致，**横向对比失去可比性**；
+- 用户无法主动控制"这次测试要不要思考、思考到什么强度"。
+
+本 fork 在参数设置面板新增 **思考强度（Reasoning Effort）** 档位，把"思考"从"服务端黑盒"变成**可配置、可记录、可对比**的受控变量。
+
+### ✨ 核心新增功能：思考请求适配（Reasoning Effort）
+在参数面板新增下拉 `思考强度 (Reasoning Effort)`，可选：
+
+`Off / Low / Medium / High / XHigh / Max`（默认 `Off`）
+
+- **Off**：请求中注入 `enable_thinking=false`，各开关取 `disabled` 形态；
+- **其它档位**：`enable_thinking=true`，并把档位写入 `reasoning_effort`（`low/medium/high/xhigh/max`）。
+
+为覆盖不同厂商的不同参数命名（Qwen / GLM / MiniMax / Kimi / DeepSeek / xAI 等），请求体会**饱和式注入**以下字段，避免"漏网"：
+
+```js
+body.enable_thinking       = true/false;                 // Qwen/GLM/MiniMax/Kimi …
+body.thinking            = { type: "enabled"/"disabled" };   // DeepSeek/xAI Grok …
+body.chat_template_kwargs = { thinking: { type: … } };      // DeepSeek V3.1 兼容
+if (enabled) body.reasoning_effort = "low|medium|high|xhigh|max";
+```
+
+同时针对**严格校验的服务端**（如 OpenAI 官方，会拒绝不认识的字段并报 400/422），实现了**自动降级**：检测到"未知字段"类错误时，自动剥除报错点名的思考字段并重试，最终可退回到最小请求体，**不会中断测试**。
+
+### 🧩 程序设计（大致说明）
+1. **UI 层**：`index.html` / `sql_benchmark.html` 的参数面板新增 `<select id="api-thinking-strength">`。
+2. **参数贯穿**：读取的 `thinkingStrength` 沿调用链 `runQuestionBenchmark(...) → callLLM(...)` 逐层透传。
+3. **请求体构造**：`callLLM` 中据档位构造 `enable_thinking / thinking / chat_template_kwargs / reasoning_effort`（饱和注入）。
+4. **自动降级**：`isUnknownFieldResponse()` + `fieldMentioned()`（按字段边界精确识别，避免 `thinking` 误匹配 `enable_thinking`）识别未知字段 → 剥除重试。
+5. **持久化与记录**：选择写入 `localStorage`（刷新保留），并记录到导出 `summary.md` 的 `Reasoning Effort` 一栏，便于按思考设置分组对比。
+6. **两种运行形态**：`index.html` 用于 GitHub Pages / 纯前端；`sql_benchmark.html` + `run_server.py` 用于本地/内网（带 CSV/Markdown 日志归档）。
+
+---
+---
+
+
 ## 使用方式一： 🚀 GitHub Pages 在线访问地址 (GitHub Pages Service URL)
 **[👉 点击此处运行在线测试 / Click here to experience online](https://wangxian001.github.io/SQL_LLM_benchmark/)**
 
