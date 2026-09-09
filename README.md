@@ -1,17 +1,5 @@
 # LLM SQL Local Benchmark Dashboard 
 (大模型 SQL 评测面板)
-<img width="2510" height="1122" alt="image" src="https://github.com/user-attachments/assets/22798e18-cbb9-49d9-8c5b-86ea0675ac71" />
-
-
-
-<img width="2332" height="1055" alt="image" src="https://github.com/user-attachments/assets/83bc4c60-782b-4186-9352-765dd4b0ab94" />
-
-<img width="2278" height="678" alt="864bde8f4174569cccaa79f0a4a6e42c" src="https://github.com/user-attachments/assets/423f151d-41d5-4bbb-8426-c32d996e8e12" />
-
-
-[English](#english) | [中文说明](#中文说明)
-
----
 
 ## 🌟 本 Fork 说明：SQL_LLM_benchmark_think
 
@@ -52,8 +40,21 @@ if (enabled) body.reasoning_effort = "low|medium|high|xhigh|max";
 6. **两种运行形态**：`index.html` 用于 GitHub Pages / 纯前端；`sql_benchmark.html` + `run_server.py` 用于本地/内网（带 CSV/Markdown 日志归档）。
 
 ---
----
 
+## 以下是原始仓库说明 (Original Repository Description)
+
+<img width="2510" height="1122" alt="image" src="https://github.com/user-attachments/assets/22798e18-cbb9-49d9-8c5b-86ea0675ac71" />
+
+
+
+<img width="2332" height="1055" alt="image" src="https://github.com/user-attachments/assets/83bc4c60-782b-4186-9352-765dd4b0ab94" />
+
+<img width="2278" height="678" alt="864bde8f4174569cccaa79f0a4a6e42c" src="https://github.com/user-attachments/assets/423f151d-41d5-4bbb-8426-c32d996e8e12" />
+
+
+[English](#english) | [中文说明](#中文说明)
+
+---
 
 ## 使用方式一： 🚀 GitHub Pages 在线访问地址 (GitHub Pages Service URL)
 **[👉 点击此处运行在线测试 / Click here to experience online](https://wangxian001.github.io/SQL_LLM_benchmark/)**
@@ -146,7 +147,7 @@ A client-side LLM SQL generation benchmark dashboard utilizing **DuckDB-Wasm** i
      1. 下载数据集：`python download_tables.py`
      2. 启动服务：`python run_server.py`
      3. 浏览器访问：`http://localhost:8000/sql_benchmark.html` (或 `http://192.168.XX.XXX:8000/sql_benchmark.html` 进行局域网内其他设备访问)
- <img width="2545" height="740" alt="QQ_1783517804304" src="https://github.com/user-attachments/assets/c07d4d0e-ca67-43b9-b416-561cf6c20a88" />
+  <img width="2545" height="740" alt="QQ_1783517804304" src="https://github.com/user-attachments/assets/c07d4d0e-ca67-43b9-b416-561cf6c20a88" />
    
 <img width="2308" height="935" alt="image" src="https://github.com/user-attachments/assets/b1a77014-1be3-42c9-b48c-9a25694aee05" />
 
@@ -161,6 +162,3 @@ opus-4.8测3轮，cost RMB11.3
 <img width="2518" height="1145" alt="5d8b91aba99d0462a4461a9b2cdbdcb4" src="https://github.com/user-attachments/assets/0bb5b5d1-0b92-4ea9-83bc-3cf85a0c870b" />
 <img width="1268" height="495" alt="image" src="https://github.com/user-attachments/assets/b9444cc0-c92b-4a18-8393-920b1edac246" />
 <img width="2290" height="927" alt="4491273d0192a4eba9e1d79801f2613c" src="https://github.com/user-attachments/assets/20b94a67-1069-4336-8037-f580a4b56292" />
-
-
-
