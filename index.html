@@ -1625,6 +1625,8 @@
 
             <li><strong>新增：重置前缀缓存功能</strong>，适用于 vLLM 推理，在每道题开始前锁定当前 prefix-cache，避免数据交叉污染。</li>
 
+            <li><strong>思考强度 (Reasoning Effort)</strong>：按你所用模型支持的档位选择（<code>Off / Low / Medium / High / XHigh / Max</code>），默认 <code>Off</code>。</li>
+
 </ol>
 
     </section>
@@ -1706,6 +1708,28 @@
                 <label>Temperature (温度)</label>
 
                 <input type="number" id="api-temperature" value="0.1" min="0" max="2" step="0.1">
+
+            </div>
+
+            <div class="input-group">
+
+                <label>思考强度 (Reasoning Effort)</label>
+
+                <select id="api-thinking-strength">
+
+                    <option value="Off">Off</option>
+
+                    <option value="Low">Low</option>
+
+                    <option value="Medium">Medium</option>
+
+                    <option value="High">High</option>
+
+                    <option value="XHigh">XHigh</option>
+
+                    <option value="Max">Max</option>
+
+                </select>
 
             </div>
 
@@ -2315,6 +2339,8 @@
 
         let benchmarkCacheSaltEnabled = false;
 
+        let benchmarkThinkingStrength = 'Off';
+
         function cloneQuestionResult(result) {
             if (!result) return null;
 
@@ -2903,13 +2929,29 @@ First row: ${firstRowStr}`;
 
         }
 
+        function isUnknownFieldResponse(status, responseText) {
+
+            if (status !== 400 && status !== 422) return false;
+
+            return /extra_forbidden|extra fields? not permitted|unknown (?:field|parameter|argument)|unrecognized (?:field|parameter|argument)|unrecognized request argument|unexpected (?:field|parameter|keyword|argument)|additionalProperties/i.test(responseText);
+
+        }
+
+        function fieldMentioned(text, field) {
+
+            const re = new RegExp('(?:^|[^A-Za-z0-9_])' + field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:$|[^A-Za-z0-9_])');
+
+            return re.test(text);
+
+        }
+
 
 
         // Call user's OpenAI-compatible API. No-tool-call responses are retried with the
 
         // exact same request body, matching the original benchmark behavior.
 
-        async function callLLM(endpoint, apiKey, model, systemPrompt, messages, maxTokens, temperature, cacheSalt, signal, onCallAttempt, onTokenUsage) {
+        async function callLLM(endpoint, apiKey, model, systemPrompt, messages, maxTokens, temperature, cacheSalt, signal, onCallAttempt, onTokenUsage, thinkingStrength) {
 
             const formattedMessages = [{ role: "system", content: systemPrompt }];
 
@@ -2989,6 +3031,17 @@ First row: ${firstRowStr}`;
 
             if (cacheSalt) body.cache_salt = cacheSalt;
 
+            // ---- Saturated thinking-param injection (mode-agnostic coverage) ----
+            const enableThinking = !!thinkingStrength && thinkingStrength !== "Off";
+            const thinkingType = enableThinking ? "enabled" : "disabled";
+            body.enable_thinking = enableThinking;                                // Qwen / GLM / MiniMax / Kimi ...
+            body.thinking = { type: thinkingType };                              // DeepSeek / xAI Grok ...
+            body.chat_template_kwargs = { thinking: { type: thinkingType } };   // DeepSeek V3.1-style compat
+            if (enableThinking) {
+                body.reasoning_effort = String(thinkingStrength).toLowerCase(); // low / medium / high / xhigh / max
+            }
+            const thinkingFieldNames = ["enable_thinking", "thinking", "chat_template_kwargs", "reasoning_effort"];
+
 
 
             const headers = { "Content-Type": "application/json" };
@@ -3013,27 +3066,58 @@ First row: ${firstRowStr}`;
 
 
 
-                const response = await fetch(endpoint, {
+                let response;
 
-                    method: "POST",
+                let responseText = "";
 
-                    headers,
+                // Auto-downgrade: strict servers (e.g. OpenAI) reject unknown fields with 400/422.
+                // Strip the named thinking field(s) and retry so saturated injection never breaks a
+                // request; a plain minimal body is the absolute fallback.
+                for (let downgrades = 0; ; downgrades++) {
 
-                    body: JSON.stringify(body),
+                    if (signal.aborted) throw new Error("Aborted");
 
-                    signal: signal
+                    response = await fetch(endpoint, {
 
-                });
+                        method: "POST",
+
+                        headers,
+
+                        body: JSON.stringify(body),
+
+                        signal: signal
+
+                    });
+
+                    if (response.ok) break;
+
+                    responseText = await response.text();
+
+                    if (isUnknownFieldResponse(response.status, responseText) && downgrades < 5) {
+
+                        const mentioned = thinkingFieldNames.filter(f => fieldMentioned(responseText, f));
+
+                        const toRemove = mentioned.length > 0 ? mentioned : thinkingFieldNames.slice();
+
+                        let removed = false;
+
+                        for (const f of toRemove) { if (f in body) { delete body[f]; removed = true; } }
+
+                        if (removed) continue;
+
+                    }
+
+                    break;
+
+                }
 
 
 
                 if (!response.ok) {
 
-                    const text = await response.text();
+                    if (cacheSalt && isCacheSaltUnsupportedResponse(response.status, responseText)) {
 
-                    if (cacheSalt && isCacheSaltUnsupportedResponse(response.status, text)) {
-
-                        const unsupportedError = new Error(`API拒绝vLLM cache_salt字段 (${response.status}): ${text}`);
+                        const unsupportedError = new Error(`API拒绝vLLM cache_salt字段 (${response.status}): ${responseText}`);
 
                         unsupportedError.code = "CACHE_SALT_UNSUPPORTED";
 
@@ -3041,7 +3125,7 @@ First row: ${firstRowStr}`;
 
                     }
 
-                    throw new Error(`API 接口返回错误 (${response.status}): ${text}`);
+                    throw new Error(`API 接口返回错误 (${response.status}): ${responseText}`);
 
                 }
 
@@ -3105,7 +3189,7 @@ First row: ${firstRowStr}`;
 
         // Run benchmark question agent loop
 
-        async function runQuestionBenchmark(question, endpoint, apiKey, model, maxTokens, temperature, cacheSalt, timeoutMs, maxRetries, signal, onLog, onStepResult, onAttempt) {
+        async function runQuestionBenchmark(question, endpoint, apiKey, model, maxTokens, temperature, cacheSalt, timeoutMs, maxRetries, signal, onLog, onStepResult, onAttempt, thinkingStrength) {
 
             const systemPrompt = getSystemPrompt(dbSchema);
 
@@ -3225,7 +3309,9 @@ First row: ${firstRowStr}`;
 
                             outputTokens += outTok;
 
-                        }
+                        },
+
+                        thinkingStrength
 
                     );
 
@@ -3681,6 +3767,8 @@ First row: ${firstRowStr}`;
             summaryContent += `- **Model Name (模型名称)**: ${benchmarkModelName}\n`;
 
             summaryContent += `- **Prefix Cache Mode (前缀缓存模式)**: ${benchmarkCacheSaltEnabled ? 'vLLM cache_salt per question' : 'Standard OpenAI request'}\n`;
+
+            summaryContent += `- **Reasoning Effort (思考强度)**: ${benchmarkThinkingStrength}\n`;
 
             summaryContent += `- **Start Time (开始时间)**: ${benchmarkStartTime || '-'}\n`;
 
@@ -5150,6 +5238,8 @@ function renderRoundMatrix() {
 
             const temperature = readNumericConfig('api-temperature', 0.1, { min: 0, max: 2 });
 
+            const thinkingStrength = document.getElementById('api-thinking-strength').value;
+
             const timeoutSec = readNumericConfig('api-timeout', 120, { integer: true, min: 10, max: 600 });
 
             const maxRetries = readNumericConfig('api-retries', 2, { integer: true, min: 0, max: 5 });
@@ -5198,7 +5288,9 @@ function renderRoundMatrix() {
 
                 temperature,
 
-                timeoutSec
+                timeoutSec,
+
+                thinkingStrength
 
             );
 
@@ -5223,6 +5315,8 @@ function renderRoundMatrix() {
             benchmarkModelName = model;
 
             benchmarkCacheSaltEnabled = cacheSaltEachQuestion;
+
+            benchmarkThinkingStrength = thinkingStrength;
 
             benchmarkStartTime = new Date().toLocaleString();
 
@@ -5279,6 +5373,8 @@ function renderRoundMatrix() {
             document.getElementById('api-maxtokens').disabled = true;
 
             document.getElementById('api-temperature').disabled = true;
+
+            document.getElementById('api-thinking-strength').disabled = true;
 
             document.getElementById('api-timeout').disabled = true;
 
@@ -5530,7 +5626,9 @@ function renderRoundMatrix() {
 
                                 updateProgress(r, totalRounds, q.id, attempts);
 
-                            }
+                            },
+
+                            thinkingStrength
 
                         );
 
@@ -5781,6 +5879,8 @@ function renderRoundMatrix() {
             document.getElementById('api-maxtokens').disabled = false;
 
             document.getElementById('api-temperature').disabled = false;
+
+            document.getElementById('api-thinking-strength').disabled = false;
 
             document.getElementById('api-timeout').disabled = false;
 
@@ -7171,7 +7271,7 @@ function renderRoundMatrix() {
 
 
 
-        function saveConfigsToLocalStorage(endpoint, apiKey, model, rounds, cacheSaltEachQuestion, maxTokens, temperature, timeoutSec) {
+        function saveConfigsToLocalStorage(endpoint, apiKey, model, rounds, cacheSaltEachQuestion, maxTokens, temperature, timeoutSec, thinkingStrength) {
 
             const configs = {
 
@@ -7189,7 +7289,9 @@ function renderRoundMatrix() {
 
                 temperature: temperature,
 
-                timeoutSec: timeoutSec
+                timeoutSec: timeoutSec,
+
+                thinkingStrength: thinkingStrength
 
             };
 
@@ -7264,6 +7366,12 @@ function renderRoundMatrix() {
                 if (configs.timeoutSec !== undefined) {
 
                     document.getElementById('api-timeout').value = configs.timeoutSec;
+
+                }
+
+                if (configs.thinkingStrength !== undefined) {
+
+                    document.getElementById('api-thinking-strength').value = configs.thinkingStrength;
 
                 }
 
